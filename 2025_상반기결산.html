@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2025 상반기 결산</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fafaf9;color:#1a1a18;min-height:100vh}
+.wrap{max-width:520px;margin:0 auto;padding:2.5rem 1.25rem 4rem}
+.prog-bar{height:1.5px;background:#e5e4e0;border-radius:2px;margin-bottom:2.5rem}
+.prog-fill{height:100%;background:#1a1a18;border-radius:2px;transition:width .4s ease}
+.step{display:none}
+.step.on{display:block;animation:fi .3s ease}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.part{font-size:10.5px;letter-spacing:.1em;color:#9e9c95;text-transform:uppercase;margin-bottom:.45rem}
+.qnum{font-size:11.5px;color:#c8c6be;margin-bottom:.3rem}
+.qtitle{font-size:18px;font-weight:500;color:#1a1a18;margin-bottom:.25rem;line-height:1.4}
+.qsub{font-size:12.5px;color:#9e9c95;margin-bottom:1.4rem}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:1.4rem}
+.chip{padding:7px 14px;border-radius:20px;border:1px solid #dddcD7;font-size:13px;color:#5a5955;cursor:pointer;background:#fff;transition:all .15s;user-select:none}
+.chip:hover{border-color:#1a1a18;color:#1a1a18}
+.chip.sel{background:#1a1a18;color:#fff;border-color:#1a1a18}
+textarea{width:100%;border:1px solid #dddcd7;border-radius:8px;padding:10px 13px;font-size:13.5px;font-family:inherit;color:#1a1a18;background:#fff;resize:none;outline:none;display:block;margin-bottom:9px}
+textarea:focus{border-color:#1a1a18}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-top:2rem}
+.btn{padding:9px 20px;border-radius:8px;border:1px solid #dddcd7;font-size:13px;cursor:pointer;font-family:inherit;background:#fff;color:#1a1a18;transition:all .15s}
+.btn:hover{background:#f3f2ef}
+.btn.pri{background:#1a1a18;color:#fff;border-color:#1a1a18}
+.btn.pri:hover{background:#333}
+.btn:disabled{opacity:.3;cursor:default}
+.sctr{font-size:12px;color:#9e9c95}
+
+/* Result */
+.result{display:none;max-width:520px;margin:0 auto;padding:2.5rem 1.25rem 4rem}
+.result.on{display:block}
+.rtitle{font-size:22px;font-weight:500;margin-bottom:.3rem}
+.rsub{font-size:13px;color:#9e9c95;margin-bottom:2.25rem}
+.rsec{margin-bottom:2rem}
+.rsec-t{font-size:10.5px;letter-spacing:.09em;color:#9e9c95;text-transform:uppercase;border-bottom:1px solid #e5e4e0;padding-bottom:.45rem;margin-bottom:.85rem}
+.rcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:9px}
+.rcard{background:#f3f2ef;border-radius:12px;padding:1rem 1.1rem}
+.rclabel{font-size:11px;color:#9e9c95;margin-bottom:4px}
+.rcval{font-size:13.5px;font-weight:500;color:#1a1a18;line-height:1.5}
+.rcval.big{font-size:21px}
+.rbtn{margin-top:2rem;padding:9px 20px;border-radius:8px;border:1px solid #dddcd7;font-size:13px;cursor:pointer;font-family:inherit;background:#fff;color:#5a5955}
+.rbtn:hover{background:#f3f2ef}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="quiz">
+  <div class="prog-bar"><div class="prog-fill" id="pf" style="width:5%"></div></div>
+  <div id="steps"></div>
+  <div class="nav">
+    <button class="btn" id="pbtn" onclick="go(-1)">이전</button>
+    <span class="sctr" id="sc">1 / 20</span>
+    <button class="btn pri" id="nbtn" onclick="go(1)">다음</button>
+  </div>
+</div>
+
+<div class="result" id="result">
+  <p class="rtitle">2025 상반기 결산</p>
+  <p class="rsub">나의 상반기를 한눈에 정리했어요.</p>
+  <div id="rc"></div>
+  <button class="rbtn" onclick="restart()">처음부터 다시하기</button>
+</div>
+
+<script>
+const Q=[
+ {p:"개인 회고",n:1,t:"상반기를 대표하는 단어",type:"chip",opts:["평화","도전","안정","성장","혼란","회복","설렘","번아웃","몰입","전환","인내","즐김"],multi:false},
+ {p:"개인 회고",n:2,t:"가장 잘 산 옷",sub:"아이템명 + 한줄 이유",type:"text",fields:[{k:"a",ph:"예) 린넨 셔츠"},{k:"b",ph:"이유를 짧게"}]},
+ {p:"개인 회고",n:3,t:"가장 잘 산 템",sub:"카테고리 선택 후 아이템명",type:"ct",opts:["전자기기","뷰티·헬스","주방·청소","인테리어","기타"],ph:"아이템명"},
+ {p:"개인 회고",n:4,t:"새로 생긴 습관",type:"chip",opts:["운동","독서","기록·일기","루틴 관리","요리","절약","없음","기타"],multi:false},
+ {p:"개인 회고",n:5,t:"가장 감사했던 사람",sub:"관계 선택 후 이름 또는 별명",type:"ct",opts:["가족","친구","직장동료","나 자신","기타"],ph:"이름 또는 별명"},
+ {p:"개인 회고",n:6,t:"가장 기억에 남는 장소",sub:"카페, 동네, 여행지 등",type:"text",fields:[{k:"a",ph:"예) 제주 애월, 단골 카페"}]},
+ {p:"개인 회고",n:7,t:"상반기 최애 콘텐츠",sub:"유튜브 / OTT 한정",type:"ct",opts:["유튜브","넷플릭스","왓챠","티빙","웨이브","기타"],ph:"채널명 또는 작품명"},
+ {p:"개인 회고",n:8,t:"가장 즐겨 들은 음악",sub:"장르 선택 후 아티스트 또는 곡명",type:"ct",opts:["팝","K-pop","R&B","인디","재즈","클래식","기타"],ph:"아티스트 또는 곡명"},
+ {p:"개인 회고",n:9,t:"가장 마음에 든 책",sub:"없다면 읽고 싶은 책",type:"ct",opts:["읽은 책 있음","없음"],ph:"책 제목"},
+ {p:"개인 회고",n:10,t:"가장 뿌듯했던 순간",sub:"카테고리 선택 후 한 줄 메모",type:"ct",opts:["운동·건강","일·성과","인간관계","새로운 경험","나만의 작은 성취"],ph:"어떤 순간이었나요?"},
+ {p:"개인 회고",n:11,t:"가장 애정하는 주말 루틴",type:"chip",opts:["카페 가기","늦잠","운동","집에서 콘텐츠","친구 만나기","혼자만의 시간","쇼핑","기타"],multi:false},
+ {p:"개인 회고",n:12,t:"하반기 나에게 키워드",type:"chip",opts:["도전","여유","집중","관계","건강","절약","즐김","성장"],multi:false},
+ {p:"업무 성과",n:1,t:"상반기 내가 가장 잘한 것",type:"chip",opts:["상품 기획","가격 전략","재고 관리","마케팅 기획","데이터 분석","협업·커뮤니케이션"],multi:false},
+ {p:"업무 성과",n:2,t:"가장 기억에 남는 상품 또는 기획",sub:"카테고리 선택 후 이름",type:"ct",opts:["슬랙스","셔츠","아우터","니트","기타"],ph:"상품명 또는 기획명"},
+ {p:"업무 성과",n:3,t:"가장 아쉬웠던 순간",type:"chip",opts:["재고 부족","늦은 의사결정","기획 미스","일정 지연","커뮤니케이션 오류","외부 변수"],multi:false},
+ {p:"업무 성과",n:4,t:"상반기 나를 가장 힘들게 한 것",type:"chip",opts:["업무량","빠른 의사결정","데이터 정리","유관부서 협업","목표 압박","불확실성"],multi:false},
+ {p:"업무 성과",n:5,t:"예상보다 잘 된 것 vs 못 된 것",sub:"각각 키워드나 카테고리를 짧게",type:"text",fields:[{k:"a",ph:"예상보다 잘 된 것"},{k:"b",ph:"예상보다 못 된 것"}]},
+ {p:"업무 성과",n:6,t:"상반기 나의 협업 스타일",type:"chip",opts:["주도적으로 끌었다","묵묵히 실행했다","조율하며 맞췄다","혼자 해결했다"],multi:false},
+ {p:"업무 성과",n:7,t:"하반기 집중하고 싶은 업무 영역",type:"chip",opts:["신상품 기획","데이터 기반 의사결정","재고·수급 안정화","마케팅 연계","브랜드 전략","협업 프로세스 개선"],multi:true},
+ {p:"업무 성과",n:8,t:"하반기의 나에게 한마디",sub:"딱 한 문장",type:"text",fields:[{k:"a",ph:"하반기의 나에게 전하고 싶은 말"}]},
+];
+
+const A=Q.map(()=>({}));
+let cur=0;
+
+function render(){
+  const c=document.getElementById("steps");
+  c.innerHTML="";
+  Q.forEach((q,i)=>{
+    const d=document.createElement("div");
+    d.className="step"+(i===0?" on":"");
+    d.id="s"+i;
+    d.innerHTML=buildQ(q,i);
+    c.appendChild(d);
+  });
+}
+
+function buildQ(q,i){
+  const a=A[i];
+  let h=`<p class="part">${q.p}</p><p class="qnum">${String(q.n).padStart(2,"0")}</p><p class="qtitle">${q.t}</p>`;
+  if(q.sub)h+=`<p class="qsub">${q.sub}</p>`;
+  if(q.type==="chip"){
+    h+=`<div class="chips">`+q.opts.map(o=>`<span class="chip${isSel(i,o)?" sel":""}" onclick="pick(${i},'${o}',${q.multi})">${o}</span>`).join("")+`</div>`;
+  } else if(q.type==="text"){
+    h+=q.fields.map(f=>`<textarea rows="2" placeholder="${f.ph}" oninput="sv(${i},'${f.k}',this.value)">${a[f.k]||""}</textarea>`).join("");
+  } else if(q.type==="ct"){
+    h+=`<div class="chips">`+q.opts.map(o=>`<span class="chip${a.chip===o?" sel":""}" onclick="pick(${i},'${o}',false)">${o}</span>`).join("")+`</div>`;
+    h+=`<textarea rows="2" placeholder="${q.ph}" oninput="sv(${i},'t',this.value)">${a.t||""}</textarea>`;
+  }
+  return h;
+}
+
+function isSel(i,o){const v=A[i].chip;return Array.isArray(v)?v.includes(o):v===o;}
+function pick(i,val,multi){
+  if(multi){
+    if(!Array.isArray(A[i].chip))A[i].chip=[];
+    const x=A[i].chip.indexOf(val);
+    if(x>=0)A[i].chip.splice(x,1);else A[i].chip.push(val);
+  }else{A[i].chip=val;}
+  document.getElementById("s"+i).innerHTML=buildQ(Q[i],i);
+}
+function sv(i,k,v){A[i][k]=v;}
+
+function go(d){
+  document.getElementById("s"+cur).classList.remove("on");
+  cur+=d;
+  if(cur>=Q.length){showRes();return;}
+  cur=Math.max(0,Math.min(cur,Q.length-1));
+  document.getElementById("s"+cur).classList.add("on");
+  upNav();
+}
+
+function upNav(){
+  document.getElementById("pf").style.width=Math.round((cur+1)/Q.length*100)+"%";
+  document.getElementById("sc").textContent=(cur+1)+" / "+Q.length;
+  document.getElementById("pbtn").disabled=cur===0;
+  document.getElementById("nbtn").textContent=cur===Q.length-1?"완료 →":"다음";
+}
+
+function gc(i){const v=A[i].chip;return Array.isArray(v)?v.join(", ")||"—":v||"—";}
+function gt(i,k){return A[i][k]||"—";}
+function gct(i){const c=A[i].chip||"—";const t=A[i].t||"—";return c===t?"—":`${c} · ${t}`;}
+
+function showRes(){
+  document.getElementById("quiz").style.display="none";
+  document.getElementById("result").classList.add("on");
+  const secs=[
+    {t:"이번 상반기, 한 마디로",cols:2,cards:[
+      {l:"상반기 키워드",v:gc(0),big:true},
+      {l:"하반기 키워드",v:gc(11),big:true},
+    ]},
+    {t:"나의 소비 & 취향",cols:0,cards:[
+      {l:"가장 잘 산 옷",v:gt(1,"a")+(gt(1,"b")!=="—"?" — "+gt(1,"b"):"")},
+      {l:"가장 잘 산 템",v:gct(2)},
+      {l:"최애 콘텐츠",v:gct(6)},
+      {l:"즐겨 들은 음악",v:gct(7)},
+      {l:"마음에 든 책",v:gct(8)},
+    ]},
+    {t:"나의 일상 & 감정",cols:0,cards:[
+      {l:"새로 생긴 습관",v:gc(3)},
+      {l:"감사했던 사람",v:gct(4)},
+      {l:"기억에 남는 장소",v:gt(5,"a")},
+      {l:"뿌듯했던 순간",v:gct(9)},
+      {l:"주말 루틴",v:gc(10)},
+    ]},
+    {t:"업무 성과",cols:0,cards:[
+      {l:"가장 잘한 것",v:gc(12)},
+      {l:"잘 된 상품·기획",v:gct(13)},
+      {l:"아쉬웠던 순간",v:gc(14)},
+      {l:"힘들었던 것",v:gc(15)},
+      {l:"협업 스타일",v:gc(17)},
+    ]},
+    {t:"성과 돌아보기",cols:3,cards:[
+      {l:"예상보다 잘 된 것",v:gt(16,"a")},
+      {l:"예상보다 못 된 것",v:gt(16,"b")},
+      {l:"하반기 집중 영역",v:gc(18)},
+    ]},
+    {t:"하반기의 나에게",cols:1,cards:[
+      {l:"한마디",v:gt(19,"a")},
+    ]},
+  ];
+  let html="";
+  secs.forEach(s=>{
+    const gcols=s.cols===1?"1fr":s.cols===2?"1fr 1fr":s.cols===3?"repeat(3,1fr)":"repeat(auto-fit,minmax(0,1fr))";
+    html+=`<div class="rsec"><p class="rsec-t">${s.t}</p><div class="rcards" style="grid-template-columns:${gcols}">`;
+    s.cards.forEach(c=>{html+=`<div class="rcard"><p class="rclabel">${c.l}</p><p class="rcval${c.big?" big":""}">${c.v}</p></div>`;});
+    html+=`</div></div>`;
+  });
+  document.getElementById("rc").innerHTML=html;
+}
+
+function restart(){
+  A.forEach(a=>{for(let k in a)delete a[k];});
+  cur=0;
+  document.getElementById("result").classList.remove("on");
+  document.getElementById("quiz").style.display="";
+  render();upNav();
+}
+
+render();upNav();
+</script>
+</body>
+</html>
